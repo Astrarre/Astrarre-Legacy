@@ -10,4 +10,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = "astrarre"
+rootProject.name = "astrarre-legacy-v0"
+include "astrarre-gui-v0"
+include "astrarre-rendering-v0"
+include "astrarre-networking-v0"

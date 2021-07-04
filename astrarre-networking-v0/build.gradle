@@ -1,0 +1,4 @@
+dependencies {
+    modImplementation 'io.github.astrarre:astrarre-util-v0-fabric:1.2.1'
+    modImplementation 'io.github.astrarre:astrarre-itemview-v0-fabric:1.2.2'
+}

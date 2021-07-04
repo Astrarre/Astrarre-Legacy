@@ -14,7 +14,6 @@ loom {
     //runDir = "run"
 }
 
-
 apply from: 'scripts/allprojects.gradle'
 
 static def fapi(Project proj, String... modules) {

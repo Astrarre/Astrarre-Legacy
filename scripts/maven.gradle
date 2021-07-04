@@ -1,0 +1,104 @@
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+task sourcesJar(type: Jar) {
+    group = "astrarre"
+    archiveClassifier = "sources"
+    from sourceSets.main.allSource
+}
+
+afterEvaluate {
+    if (project.hasProperty("deps") || project == rootProject) {
+        def projs = project == project.rootProject ? project.subprojects : project.deps.split(",").collect { project.rootProject.project(it) }
+        projs.each {
+            it.tasks.publish.doLast(() -> project.tasks.publish)
+            project.tasks.publish.dependsOn(it.tasks.publish)
+        }
+        publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    pom.withXml {
+                        def depsNode = getOrCreateNode(asNode(), "dependencies")
+                        projs.each {
+                            def depNode = depsNode.appendNode("dependency")
+                            depNode.appendNode("groupId", it.group)
+                            depNode.appendNode("artifactId", "$it.name-fabric")
+                            depNode.appendNode("version", it.version)
+                            depNode.appendNode("scope", "compile")
+                        }
+                    }
+                }
+
+                mavenJava2(MavenPublication) {
+                    pom.withXml {
+                        def depsNode = getOrCreateNode(asNode(), "dependencies")
+                        projs.each {
+                            def depNode = depsNode.appendNode("dependency")
+                            depNode.appendNode("groupId", it.group)
+                            depNode.appendNode("artifactId", "$it.name-fabric-lite")
+                            depNode.appendNode("version", it.version)
+                            depNode.appendNode("scope", "compile")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    task remapJar2(type: remapJar.class) {
+        group = "astrarre"
+        addNestedDependencies = remapJar.addNestedDependencies
+        addDefaultNestedDependencies = false
+        remapAccessWidener = remapJar.remapAccessWidener
+        jarRemapper = remapJar.jarRemapper
+        input = remapJar.input
+    }
+    remapJar2.dependsOn(remapJar)
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                artifactId = "$project.name-fabric"
+                // regular old implementation jar
+                artifact(remapJar) {
+                    builtBy remapJar
+                }
+
+                // sources for ye normal folk
+                artifact(sourcesJar) {
+                    builtBy remapSourcesJar
+                }
+            }
+            mavenJava2(MavenPublication) {
+                artifactId = "$project.name-fabric-lite"
+                artifact(remapJar2) {
+                    builtBy remapJar2
+                }
+                artifact(sourcesJar) {
+                    builtBy remapSourcesJar
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                def mavenUrl = project.hasProperty('maven_url') ? project.property('maven_url') : ""
+                url mavenUrl
+                if (mavenUrl.startsWith("http")) {
+                    credentials {
+                        username project.hasProperty('maven_username') ? project.property('maven_username') : ""
+                        password project.hasProperty('maven_password') ? project.property('maven_password') : ""
+                    }
+                }
+            }
+        }
+    }
+}
+
+jar {
+    from "$rootProject.projectDir/LICENSE"
+}
